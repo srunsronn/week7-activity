@@ -2,24 +2,38 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:week_3_blabla_project/model/ride/ride_pref.dart';
+import 'package:week_3_blabla_project/providers/async_value.dart';
 import 'package:week_3_blabla_project/repository/ride_preferences_repository.dart';
 
 class RidesPreferencesProvider extends ChangeNotifier {
   RidePreference? _currentPreference;
-  List<RidePreference> _pastPreferences = [];
+  late AsyncValue<List<RidePreference>> pastPreferences;
 
   final RidePreferencesRepository repository;
 
   RidesPreferencesProvider({required this.repository}) {
-    // For now past preferences are fetched only 1 time
-    _pastPreferences = repository.getPastPreferences();
+    _fetchPastPreferences();
   }
 
   RidePreference? get currentPreference => _currentPreference;
 
-  // History is returned from newest to oldest preference
-  List<RidePreference> get preferencesHistory =>
-      _pastPreferences.reversed.toList();
+  Future<void> _fetchPastPreferences() async {
+    // 1- Handle loading
+    pastPreferences = AsyncValue.loading();
+    notifyListeners();
+
+    try {
+      // 2- fetch data
+      List<RidePreference> pastPref = await repository.getPastPreferences();
+
+      // 3- Handle success
+      pastPreferences = AsyncValue.success(pastPref);
+    } catch (error) {
+      // 4- Handle error
+      pastPreferences = AsyncValue.error(error);
+    }
+    notifyListeners();
+  }
 
   // Set the current preference
   void setCurrentPreferrence(RidePreference pref) {
@@ -36,8 +50,31 @@ class RidesPreferencesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _addPreference(RidePreference preference) {
-    _pastPreferences.remove(preference);
-    _pastPreferences.add(preference);
+  Future<void> _addPreference(RidePreference preference) async {
+    // I choose the second approach to add the new preference to the history
+    // because it avoids an additional fetch from the repository, making the
+    // operation faster and more efficient. By directly updating the provider's
+    // cache, we reduce the load on the database or backend and ensure the UI
+    // is updated immediately.
+    try {
+      await repository.addPreference(preference);
+      List<RidePreference> updatedList = List.from(pastPreferences.data ?? []);
+      updatedList.add(preference);
+      pastPreferences = AsyncValue.success(updatedList);
+
+      notifyListeners();
+    } catch (error) {
+      // Handle error
+      pastPreferences = AsyncValue.error(error);
+      notifyListeners();
+    }
+  }
+
+  // History is returned from newest to oldest preference
+  List<RidePreference> get preferencesHistory {
+    if (pastPreferences.state == AsyncValueState.success) {
+      return pastPreferences.data!.reversed.toList();
+    }
+    return [];
   }
 }
