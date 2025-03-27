@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:week_3_blabla_project/model/ride/ride_pref.dart';
-import 'package:week_3_blabla_project/providers/async_value.dart';
-import 'package:week_3_blabla_project/repository/ride_preferences_repository.dart';
+import 'package:week_3_blabla_project/ui/providers/async_value.dart';
+import 'package:week_3_blabla_project/data/repository/ride_preferences_repository.dart';
 
 class RidesPreferencesProvider extends ChangeNotifier {
   RidePreference? _currentPreference;
